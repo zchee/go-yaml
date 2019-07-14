@@ -1,0 +1,143 @@
+package goyamlpeg
+
+type Yaml Peg {
+   Messages
+}
+
+yaml <- skip yaml_stream !.
+
+# --------------------------------------------------------------------------------
+# Common
+# --------------------------------------------------------------------------------
+
+skip <- (' ' / '\t' / '\r' / '\n')*
+nl <- '\n\r' / '\n' / '\r'
+nb <- (!nl)*
+space <- (' ' / '\t')*
+letter <- [[A-Z]]
+alnum <- ([[A-Z]] / [0-9])*
+id <- letter alnum*
+hex <- [0-9] / [[A-F]]
+digit <- [0-9]
+comment <- '#' nb
+
+# --------------------------------------------------------------------------------
+# URI
+# --------------------------------------------------------------------------------
+
+uri           <- (abs_uri / rel_uri) ('#' fragment)?
+
+abs_uri       <- scheme ':' (hier_part / opaque_part)
+rel_uri       <- (net_path / abs_path / rel_path) ('?' query)?
+
+hier_part     <- (net_path / abs_path) ('?' query)?
+opaque_part   <- uric_no_slash uric*
+
+uric_no_slash <- unreserved / pencoded
+              / ';' / '?' / ':' / '@' / '&' / '=' / '+' / '$' / ','
+
+net_path      <- '//' authority abs_path?
+abs_path      <- '/'  path_segments
+rel_path      <- rel_segment abs_path?
+
+rel_segment   <- (unreserved / pencoded / ';' / '@' / '&' / '=' / '+' / '$' / ',')+
+
+scheme        <- letter (letter / digit / '+' / '-' / '.')
+
+authority     <- server / reg_name
+
+reg_name      <- (unreserved / pencoded
+              / '$' / ',' / ';' / ':' / '@' / '&' / '=' / '+')+
+
+server        <- ((userinfo '@')? hostport)?
+userinfo      <- (unreserved / pencoded / ';' / ':' / '&' / '=' / '+' / '$' / ',' )*
+
+hostport      <- host (':' port)?
+host          <- hostname / ipv4_address
+hostname      <- (domainlabel '.')* toplabel '.'?
+domainlabel   <- alnum / alnum (alnum / '-' )* alnum
+toplabel      <- letter / letter (alnum / '-' )* alnum
+ipv4_address  <- digit+ '.' digit+ '.' digit+ '.' digit+
+port          <- digit+
+
+path_segments <- segment ('/' segment)*
+segment       <- pchar* (';' param)*
+param         <- pchar*
+pchar         <- unreserved / pencoded / ':' / '@' / '&' / '=' / '+' / '$' / ','
+
+query         <- uric*
+
+fragment      <- uric*
+
+uric          <- reserved / unreserved / pencoded
+reserved      <- ';' / '/' / '?' / ':' / '@' / '&' / '=' / '+' / '$' / ','
+unreserved    <- alnum / mark
+mark          <- '-' / '_' / '.' / '!' / '~' / '*' / "'" / '(' / ')'
+pencoded      <- '%' hex hex
+
+# --------------------------------------------------------------------------------
+# Header
+# --------------------------------------------------------------------------------
+
+yaml_preamble <- (yaml_pi nl+ tag_pi
+                 / yaml_pi
+                 / tag_pi) nl+
+yaml_message_start <- '---'
+yaml_message_end <- '...'
+yaml_message <- (yaml_preamble yaml_message_start nl+ <yaml_doc> nl+ yaml_message_end 
+                / yaml_message_start nl+ <yaml_doc> nl+ yaml_message_end
+                / <yaml_doc> nl+ yaml_message_end
+                / yaml_preamble yaml_message_start nl+ <yaml_doc>
+                / yaml_message_start nl+ <yaml_doc>
+                / <yaml_doc>) nl* { p.Append(buffer[begin:end]) }
+
+yaml_stream <- yaml_message*
+
+
+word_char <- digit / letter / '-'
+uri_char <- pencoded / word_char
+         / '#' / ';' / '/' / '?' / ':' / '@' / '&' / '=' / '+' / '$' / ','
+         / '_' / '.' / '!' / '~' / '*' / "'" / '(' / ')' / '[' / ']'
+
+flow_indicator <- ',' / '[' / ']' / '{' / '}'
+
+tag_char <- pencoded / word_char
+         / '#' / ';' / '/' / '?' / ':' / '@' / '&' / '=' / '+' / '$'
+         / '_' / '.' / '~' / '*' / "'" / '(' / ')'
+
+yaml_pi <- '%YAML' space [1-9]+ '.' [0-9]+
+tag_pi <- '%TAG' space tag_decl
+tag_decl <- ('!' letter+ '!' / '!!' / '!') space (local_tag_prefix / global_tag_prefix)
+local_tag_prefix <- '!' uri_char*
+global_tag_prefix <- tag_char uri_char*
+
+# --------------------------------------------------------------------------------
+# Document
+# --------------------------------------------------------------------------------
+
+yaml_doc <- scalar
+          / seq
+          / map
+          / comment
+
+# --------------------------------------------------------------------------------
+# Elements
+# --------------------------------------------------------------------------------
+
+chomping_indicator <- '+' / '-'
+indent_indicator <- ('|' / '>') [1-9]?
+scalar <- ((indent_indicator 
+           / chomping_indicator
+           / indent_indicator chomping_indicator) 
+           comment? nl simple_scalar)
+          / simple_scalar
+simple_scalar <- quoted_literal / apos_literal / literal
+
+# TODO
+seq <- 'seq'
+map <- 'map'
+literal <- [[A-Z]]+
+escaped <- '\\x' hex hex
+         / '\\u' hex hex hex hex
+apos_literal <- "'" ([^\'] / "''")* "'"
+quoted_literal <- '"' ([^"\\] / escaped)* '"'
