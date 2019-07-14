@@ -1,0 +1,109 @@
+run:
+  concurrency: 12
+  deadline: 5m
+  issues-exit-code: 1
+  tests: true
+  skip-dirs:
+    - "vendor$"
+  skip-files:
+    - ".*\\.pb\\.go"
+    - ".*(.|_)gen\\.go"
+  modules-download-mode: readonly
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    # exclude: .errcheckignore
+  goconst:
+    min-len: 3
+    min-occurrences: 3
+  gofmt:
+    simplify: true
+  goimports:
+    local-prefixes: github.com/zchee/go-yaml
+  golint:
+    min-confidence: 0.3
+  govet:
+    check-shadowing: false
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+      - experimental
+      - opinionated
+    disabled-checks:
+      - yodaStyleExpr
+    settings:
+      hugeParam:
+        sizeThreshold: 80
+      rangeExprCopy:
+        sizeThreshold: 512
+      rangeValCopy:
+        sizeThreshold: 128
+  lll:
+    line-length: 140
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US
+  nakedret:
+    max-func-lines: 30
+  prealloc:
+    simple: true
+    range-loops: true
+    for-loops: false
+  unparam:
+    algo: cha
+    check-exported: true
+  unused:
+    check-exported: false
+
+linters:
+  enable:
+    - deadcode
+    - depguard
+    - dupl
+    - errcheck
+    - goconst
+    - gocritic
+    - gofmt
+    - goimports
+    - golint
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - lll
+    - maligned
+    - misspell
+    - prealloc
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+  disable:
+    - gochecknoglobals
+    - gochecknoinits
+    - gocyclo
+    - nakedret
+    - scopelint
+  fast: false
+
+issues:
+  exclude-use-default: true
+  exclude-rules:
+    - linters:
+        - golint
+      text: "don't use ALL_CAPS in Go names; use CamelCase"
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
